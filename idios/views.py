@@ -1,6 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
-from django.http import HttpResponse, Http404, HttpResponseRedirect
+from django.http import HttpResponse, Http404, HttpResponseRedirect, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.template import RequestContext
 from django.template.loader import render_to_string
@@ -92,11 +92,23 @@ class ProfileDetailView(DetailView):
         
         if idios.settings.USE_USERNAME:
             self.page_user = get_object_or_404(User, username=self.kwargs["username"])
-            return get_object_or_404(profile_class, user=self.page_user)
+            profile = get_object_or_404(profile_class, user=self.page_user)
         else:
             profile = get_object_or_404(profile_class, pk=self.kwargs["pk"])
             self.page_user = profile.user
-            return profile
+        
+        private_groups = ["ContentDeveloper", "ContentQATester", "ContentProjectManager"]
+        current_user = self.request.user
+        # If the profile user belongs to a private groups, only the user itself
+        # has access to it.
+        for g in private_groups:
+            if profile.user.groups.filter(name=g).exists() and \
+               profile.user != current_user:
+                raise Http404
+        # Also if the profile user is a superuser
+        if profile.user.is_superuser and profile.user != current_user:
+            raise Http404
+        return profile
     
     def get_context_data(self, **kwargs):
         base_profile_class = get_profile_base()
