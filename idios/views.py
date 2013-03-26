@@ -84,7 +84,7 @@ class ProfileDetailView(DetailView):
     template_name = "idios/profile.html"
     context_object_name = "profile"
     
-    def get_object(self):
+    def get_object(self, **kwargs):
         profile_class = get_profile_model(self.kwargs.get("profile_slug"))
         
         if profile_class is None:
@@ -97,7 +97,7 @@ class ProfileDetailView(DetailView):
             profile = get_object_or_404(profile_class, pk=self.kwargs["pk"])
             self.page_user = profile.user
         
-        private_groups = ["ContentDeveloper", "ContentQATester", "ContentProjectManager"]
+        private_groups = kwargs.get("private_groups", [])
         current_user = self.request.user
         # If the profile user belongs to a private groups, only the user itself
         # has access to it.
